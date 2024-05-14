@@ -78,13 +78,6 @@ std::string multiply_arbitrary(std::string_view n1, std::string_view n2)
 
 int main(int argc, char** argv)
 {
-    std::string n1("4179"), n2("23");
-    if (argc > 2)
-    {
-        n1 = argv[1];
-        n2 = argv[2];
-    }
-
     std::string_view huge_number = "73167176531330624919225119674426574742355349194934"
                               "96983520312774506326239578318016984801869478851843"
                               "85861560789112949495459501737958331952853208805511"
@@ -109,7 +102,7 @@ int main(int argc, char** argv)
     uint64_t great_digits[13] {};
     uint64_t great_product = 0;
 
-    for (uint64_t i=0; i < 1000-13; i++)
+    for (uint64_t i=0; i < 1000-12; i++)
     {
         std::cout << "Trying ";
         uint64_t digits[13];

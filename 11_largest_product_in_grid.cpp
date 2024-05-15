@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstdint>
 #include <array>
-#include <cstring>
 
 typedef uint64_t used_t;
 

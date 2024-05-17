@@ -6,15 +6,21 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <atomic>
 
 using used_t = uint64_t;
 using palette_t = std::vector<std::pair<used_t, used_t>>;
 
-used_t count = 0, verbose = 100;
+used_t count = 0;
+int verbose = 100;
 long double count_rate = 0.0, verbose_one_rate = 5.0;
 used_t grid_size[2] = {20, 20}; // columns, rows
 
-std::mutex write_mutex, count_mutex;
+palette_t animate_assign;
+used_t animate_assign_count;
+std::atomic_bool animate_assign_quit = false;
+
+std::mutex write_mutex, count_mutex, animate_assign_mutex;
 std::chrono::steady_clock::time_point last_tp;
 std::chrono::high_resolution_clock::time_point last_cps_tp;
 
@@ -49,6 +55,43 @@ void animate_palette(const palette_t& palette)
     }
 }
 
+void animate_assign_palette()
+{
+    bool last_done = false;
+    while (!animate_assign_quit.load())
+    {
+        palette_t palette;
+        used_t count;
+        {
+            std::lock_guard<std::mutex> lg(animate_assign_mutex);
+            palette = animate_assign;
+            count = animate_assign_count;
+            animate_assign.clear();
+            last_done = false;
+        }
+
+        if (!last_done)
+        {
+            std::string raw (grid_size[0] * grid_size[1], ' ');
+            for (const auto& where : palette) // rows
+            {
+                std::cout << "\033[H\033[J";
+                std::cout << "Rendering route #" << count << std::endl;
+                raw[where.second * grid_size[0] + where.first] = '*';
+                for (unsigned i=0; i < raw.size(); i++)
+                {
+                    std::cout << raw[i];
+                    if ((i+1) % grid_size[0] == 0) std::cout << '\n';
+                }
+                std::cout.flush();
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            }
+
+            last_done = true;
+        }
+    }
+}
+
 void slither_into(const used_t where[2], used_t recursion_depth, palette_t palette, unsigned thread_id)
 {
     recursion_depth++;
@@ -71,7 +114,7 @@ void slither_into(const used_t where[2], used_t recursion_depth, palette_t palet
 
         if (verbose >= 2)
         {
-            std::lock_guard<std::mutex> lg2(write_mutex);
+            std::lock_guard<std::mutex> lg(write_mutex);
             std::ostringstream oss;
             draw_palette(palette, oss);
             oss << "Found route #" << count << ","
@@ -91,8 +134,9 @@ void slither_into(const used_t where[2], used_t recursion_depth, palette_t palet
             {
                 last_tp = now_tp;
 
-                std::lock_guard<std::mutex> lg2(write_mutex);
+                std::lock_guard<std::mutex> lg(write_mutex);
                 std::ostringstream oss;
+                oss << "\033[H\033[J";
                 draw_palette(palette, oss);
                 oss << "Found route #" << count << ","
                     << " at a rate of " << std::setprecision(4) << std::scientific << count_rate << std::fixed << "/s,"
@@ -102,6 +146,23 @@ void slither_into(const used_t where[2], used_t recursion_depth, palette_t palet
                 // animate_palette(palette);
                 std::cout << oss.str();
                 std::cout.flush();
+            }
+        }
+        else if (verbose == -1)
+        {
+            auto now_tp = std::chrono::steady_clock::now();
+            auto diff_tp = std::chrono::duration_cast<std::chrono::milliseconds>(now_tp - last_tp);
+
+            if (diff_tp.count() >= unsigned(1000 / verbose_one_rate))
+            {
+                last_tp = now_tp;
+                
+                std::lock_guard<std::mutex> lg(animate_assign_mutex);
+                if (animate_assign.empty())
+                {
+                    animate_assign = palette;
+                    animate_assign_count = count;
+                }
             }
         }
 
@@ -175,6 +236,10 @@ int main(int argc, char** argv)
 
     if (1)
     {
+        if (verbose != -1)
+            animate_assign_quit = true;
+        std::thread t_animate(animate_assign_palette);
+
         used_t where[2] = {2, 0};
         palette.push_back(std::make_pair(0, 0));
         palette.push_back(std::make_pair(1, 0));
@@ -202,6 +267,9 @@ int main(int argc, char** argv)
         t_right_down.join();
         t_down_down.join();
         t_down_right.join();
+
+        animate_assign_quit = true;
+        t_animate.join();
     }
     else if (0)
     {

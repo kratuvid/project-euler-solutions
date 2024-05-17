@@ -1,17 +1,16 @@
 #include <iostream>
-#include <cstdint>
 
-using used_t = uint64_t;
+using used_t = unsigned long long;
 
 int main(int argc, char** argv)
 {
     used_t under = 1'000'000;
-    bool verbose = true;
+    used_t verbose = true;
 
     if (argc > 1)
-        under = std::stoll(argv[1]);
+        under = std::stoull(argv[1]);
     if (argc > 2)
-        verbose = false;
+        verbose = std::stoull(argv[2]);
 
     std::cout << "Testing under " << under << "..." << std::endl;
 
@@ -21,7 +20,7 @@ int main(int argc, char** argv)
         used_t n = i, chain_length = 1;
         while (n != 1)
         {
-            if (verbose) std::cout << n << " -> ";
+            if (verbose >= 2) std::cout << n << " -> ";
 
             if (n % 2 == 0)
                 n = n / 2;
@@ -29,12 +28,17 @@ int main(int argc, char** argv)
                 n = 3 * n + 1;
             chain_length++;
         }
-        if (verbose) std::cout << 1 << std::endl << std::endl;
+        if (verbose >= 2) std::cout << 1 << std::endl << std::endl;
 
         if (chain_length > longest_chain_length)
         {
             longest_chain_length = chain_length;
             longest_starting_number = i;
+
+            if (verbose >= 1)
+                std::cout << longest_starting_number
+                    << " has produced the longest chain length of "
+                    << longest_chain_length << " until now" << std::endl;
         }
     }
 

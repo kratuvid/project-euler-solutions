@@ -76,6 +76,8 @@ std::string multiply_arbitrary(std::string_view n1, std::string_view n2)
 std::string exp_arbitrary(std::string_view num, uint16_t power)
 {
     if (power == 0) return "1";
+    if (num == "1") return "1";
+    if (num == "0") return "0";
 
     std::string result(num.begin(), num.end());
     for (uint16_t i=2; i <= power; i++)

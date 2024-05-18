@@ -6,6 +6,6 @@ set -e
 
 exe="build/$(basename -s .cpp "$1")"
 if [ ! -e "$exe" ] || [ "$1" -nt "$exe" ]; then
-    g++ -O2 "$1" -o "$exe"
+    g++ -Ofast "$1" -o "$exe"
 fi
 ./"$exe" ${@:2}
